@@ -1,0 +1,135 @@
+import org.apache.spark.sql.SparkSession 
+
+val  spark = SparkSession.builder().master("local[1]").appName("SparkByExamples").getOrCreate()
+
+val c1 = spark.sparkContext.textFile("C:\\Users\\Sneha\\Downloads\\cars.csv")
+
+c1.foreach(println)
+
+val c2 = c1.zipWithIndex()
+
+val c3 = c2.filter(x=> (x._2>1))
+
+val c4 = c3.map(x=> (x._1))
+
+val c5 = c4.map(x=> x.split(";"))
+
+val c6 = c5.map{x=>
+     | val f1 = x(0)
+     | val f2 = x(1).toFloat
+     | val f3 = x(2).toInt
+     | val f4 = x(3).toFloat
+     | val f5 = x(4).toFloat
+     | val f6 = x(5).toDouble
+     | val f7 = x(6).toFloat
+     | val f8 = x(7).toInt
+     | val f9 = x(8)
+     | (f1,f2,f3,f4,f5,f6,f7,f8,f9)
+     | }
+
+val df = c6.toDF()
+
+val df = c6.toDF("Car","MPG","Cylinder","Disp","HP","Weight","Acceleration","Mode","Origin")
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+  val simpleData2 = Seq(("James","Sales","NY",90000,34,10000),
+    ("Maria","Finance","CA",90000,24,23000),
+    ("Jen","Finance","NY",79000,53,15000),
+    ("Jeff","Marketing","CA",80000,25,18000),
+    ("Kumar","Marketing","NY",91000,50,21000)
+  )
+
+  val df2 = simpleData2.toDF("employee_name","department","state","salary","age","bonus")
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+val df1 = spark.sqlContext.read.format("csv").option("header","true").option("delimiter", ";").load("C:\\Users\\Sneha\\Downloads\\film.csv")
+
+(
+	val skipable_first_row = df1.first()
+	val df2  = df1.filter(row => row != skipable_first_row)
+)
+
+val df3 = df2.drop("*Image")
+
+df2.printSchema
+
+val df4 = df3.withColumn("Year",col("Year").cast("Integer"))
+
+df1.filter(df1("pH").isNull && df1("quality").isNull).count()
+
+
+(
+	df.filter(df("Awards") === "Yes").show(false)
+	df.filter(df("Subject") === "Comedy"  && df("Awards") === "No").show(false)
+)
+
+(
+	val df1 = df.distinct().count() // to void duplicate values 
+	val dropDisDF = df.dropDuplicates("Length").count()
+)
+
+
+[
+(		
+	groupBy , Aggregation  perform on INTEGER value ONLY
+ 
+	( df3.groupBy("Subject").count() )  
+	( df4.groupBy("Subject").max("Popularity").show )
+	( df.groupBy("department","state").sum("salary","bonus").show )  //GroupBy on multiple columns 
+	( val df5 = df4.groupBy("Subject").agg(max("Popularity").as("max_values")) )  // with new columns
+	( val df5 = df4.groupBy("Subject").agg(max("Popularity").as("max_values") ).where( col("max_values") > 55).show ) //WHERE Function
+)
+]
+
+(	df3.sort("Popularity").show
+		OR df3.sort(col("Popularity").desc).show
+)
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+val emp = Seq(( 1, "smith","2018","10","M",30000),( 2, "rose","2019","20","F",40000),( 3, "jone","2010","10","M",10000))
+val shema1 = Seq("emp_id","name","year_joined","emp_dept_id","gender","salary")
+val empDf = emp.toDF(shema1:_*)
+
+val deptDf = dept.toDF(shema2:_*)
+
+union --> joins two DataFrame 
+		val df3 = df.union(df2)
+
+
+							-------------------
+								Jions
+							--------------------
+							
+inner ---> empDf.join(deptDf,empDf("emp_dept_id") === deptDf("dept_id"),"inner").show(false)
+outer---> empDf.join(deptDf,empDf("emp_dept_id") === deptDf("dept_id"),"outer").show(false)
+leftouter---> empDf.join(deptDf,empDf("emp_dept_id") === deptDf("dept_id"),"leftouter").show(false)
+rightouter---> empDf.join(deptDf,empDf("emp_dept_id") === deptDf("dept_id"),"rightouter").show(false)
+leftsemi---> empDf.join(deptDf,empDf("emp_dept_id") === deptDf("dept_id"),"leftsemi").show(false)
+leftanti---> empDf.join(deptDf,empDf("emp_dept_id") === deptDf("dept_id"),"leftanti").show(false)
+
+								SQL
+
+	empDF.createOrReplaceTempView("EMP")
+	deptDF.createOrReplaceTempView("DEPT")
+
+val joinDF = spark.sql("select * from EMP e, DEPT d where e.emp_dept_id == d.dept_id").show()
+
+val joinDF2 = spark.sql("select * from EMP e INNER JOIN DEPT d ON e.emp_dept_id == d.dept_id").show()
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Cache --->
+	cache() method by default saves it to storage level `MEMORY_AND_DISK` because recomputing the in-memory columnar representation of the underlying table is expensive.
+
+ 		val df2 = df.where(col("State") === "PR").cache()
+Persist --->
+		val dfPersist = df.persist(StorageLevel.MEMORY_ONLY)
+
+Unpersist --->
+		val dfPersist = dfPersist.unpersist()
+
+
+
